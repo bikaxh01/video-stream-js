@@ -55,9 +55,9 @@ export const registerUser = asyncHandler(async (req, res) => {
   const user = await userModel.create({
     fullName,
     email,
-    username: username.toLoweCase(),
-    avtar: avtar.url,
-    coverimage: converImg?.url || "",
+    username: username.toLowerCase(),
+    avatar: avtar.url,
+    coverImage: converImg?.url || "",
     password,
   });
 
