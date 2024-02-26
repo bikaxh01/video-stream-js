@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { Jwt } from "jsonwebtoken";
+import Jwt  from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema(
@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hashing password before storing to DB
-userSchema.pre(async function (next) {
+userSchema.pre("save",async function (next) {
   if (!this.isModified("password")) return next();
 
   this.password = await bcrypt.hash(this.password, 10);
@@ -61,7 +61,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 
 //JWT Genrator
 userSchema.methods.generateJWT = function () {
-  return jwt.sign(
+  return Jwt.sign(
     {
       _id: this_id,
       email: this.email,
@@ -73,8 +73,8 @@ userSchema.methods.generateJWT = function () {
 };
 
 //Generating Refresh Token
-userSchema.methods.refreshToken = function () {
-  return jwt.sign(
+userSchema.methods.generateRefreshToken = function () {
+  return Jwt.sign(
     {
       _id: this_id,
     },
