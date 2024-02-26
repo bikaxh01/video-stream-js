@@ -1,11 +1,12 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { userModel } from "../models/user.model.js";
 import { cloudinaryUpload } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken";
 
 // generating Token
 const genrateRefreshAndAcsessToken = async (userId) => {
   const user = await userModel.findById(userId);
-  console.log(user);
+
   const AccessToken = user.generateJWT();
   const refreshtoken = user.generateRefreshToken();
 
@@ -99,7 +100,7 @@ const registerUser = asyncHandler(async (req, res) => {
 //loggin cantroller
 const logginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  console.log(email);
+
   //validating input
   if (!email) {
     res.status(406).json({
@@ -119,8 +120,6 @@ const logginUser = asyncHandler(async (req, res) => {
   }
   // matching password to hashed PW
   const isPWcorrect = await checkUser.isPasswordCorrect(password);
-
-  console.log(process.env.JWT_TOKEN);
 
   if (!isPWcorrect) {
     res.status(402).json({
@@ -144,7 +143,10 @@ const logginUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .cookie("accessToken", AccessToken, option)
-    .cookie("RefreshToken", refreshtoken, option);
+    .cookie("RefreshToken", refreshtoken, option)
+    .json({
+      message: loggedInUser,
+    });
 });
 
 // logout controller
@@ -152,16 +154,64 @@ const logginUser = asyncHandler(async (req, res) => {
 const loggout = asyncHandler(async (req, res) => {
   await userModel.findByIdAndUpdate(req.user._id, {
     $set: {
-      refreshToken: undefined,
+      refreshToken: "",
     },
   });
   const option = {
     httpOnly: true,
     secure: true,
   };
-  res.status(200).clearCookie("accessToken",option).clearCookie("RefreshToken",option).json({
-    message:"loggout Success !!"
-  })
+  res
+    .status(200)
+    .clearCookie("accessToken", option)
+    .clearCookie("RefreshToken", option)
+    .json({
+      message: "loggout Success !!",
+    });
 });
 
-export { registerUser, logginUser, loggout };
+// refresh token if expired
+const refreshToken = asyncHandler(async (req, res) => {
+  const inCommingToken = req.cookie.RefreshToken;
+
+  if (!inCommingToken) {
+    res.status(403).json({
+      message: "Invalid Token",
+    });
+    return;
+  }
+
+  const verifyToken = jwt.verify(inCommingToken, process.env.REFRESH_TOKEN);
+
+  const user = await userModel.findById(verifyToken._id);
+
+  if (!user) {
+    return res.status(404).json({
+      message: "invalid user",
+    });
+  }
+
+  if (inCommingToken !== user.refreshToken) {
+    return res.status(401).json({
+      message: "Invalid Token",
+    });
+  }
+
+  const { AccessToken, refreshtoken } = await genrateRefreshAndAcsessToken(
+    user._id
+  );
+
+  const option = {
+    httpOnly: true,
+    secure: true,
+  };
+  return res
+    .status(200)
+    .cookie("accessToken", AccessToken, option)
+    .cookie("RefreshToken", refreshtoken, option)
+    .json({
+      message: loggedInUser,
+    });
+});
+
+export { registerUser, logginUser, loggout,refreshToken };

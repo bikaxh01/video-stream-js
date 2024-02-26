@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 
 export const verifyJWT = asyncHandler(async(req,res,next)=>{
-    const token = req.cookies.AccessToken
+    const token = req.cookies.accessToken
 
     if(!token){
         res.status(403).json({
@@ -14,6 +14,7 @@ export const verifyJWT = asyncHandler(async(req,res,next)=>{
     }
 
     const verifyJWT= jwt.verify(token,process.env.JWT_TOKEN)
+    
 
     const isExists = await userModel.findById(verifyJWT._id).select("-password -refreshToken")
 
