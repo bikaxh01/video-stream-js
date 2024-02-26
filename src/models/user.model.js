@@ -76,7 +76,7 @@ userSchema.methods.generateJWT = function () {
 userSchema.methods.generateRefreshToken = function () {
   return Jwt.sign(
     {
-      _id: this_id,
+      _id: this._id,
     },
     process.env.REFRESH_TOKEN,
     { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }

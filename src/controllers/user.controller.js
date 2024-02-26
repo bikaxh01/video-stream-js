@@ -4,7 +4,7 @@ import { cloudinaryUpload } from "../utils/cloudinary.js";
 
 export const registerUser = asyncHandler(async (req, res) => {
   const { username, email, fullName, password } = req.body;
-  console.log(username);
+  
 
   //input Validation
   if (
@@ -31,8 +31,12 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   const avtarLocalfilepath = req.files?.avtar[0]?.path;
-  const coverimgLocalfilepath = req.files?.coverimg[0]?.path;
+  // const coverimgLocalfilepath = req.files?.coverimg[0]?.path;
 
+  let coverimgLocalfilepath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverimgLocalfilepath = req.files.coverImage[0].path
+    }
   if (!avtarLocalfilepath) {
     return res.status(404).json({
       message: "invalid avtar",
