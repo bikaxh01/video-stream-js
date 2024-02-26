@@ -2,9 +2,20 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { userModel } from "../models/user.model.js";
 import { cloudinaryUpload } from "../utils/cloudinary.js";
 
-export const registerUser = asyncHandler(async (req, res) => {
+// generating Token
+const genrateRefreshAndAcsessToken = async (userId) => {
+  const user = await userModel.findById(userId);
+  console.log(user);
+  const AccessToken = user.generateJWT();
+  const refreshtoken = user.generateRefreshToken();
+
+  user.refreshToken = refreshtoken;
+  await user.save({ validateBeforeSave: false });
+  return { AccessToken, refreshtoken };
+};
+
+const registerUser = asyncHandler(async (req, res) => {
   const { username, email, fullName, password } = req.body;
-  
 
   //input Validation
   if (
@@ -21,7 +32,6 @@ export const registerUser = asyncHandler(async (req, res) => {
     $or: [{ username }, { email }],
   });
 
- 
   // exists then return
   if (isExisted) {
     res.status(402).json({
@@ -34,9 +44,13 @@ export const registerUser = asyncHandler(async (req, res) => {
   // const coverimgLocalfilepath = req.files?.coverimg[0]?.path;
 
   let coverimgLocalfilepath;
-    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-        coverimgLocalfilepath = req.files.coverImage[0].path
-    }
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverimgLocalfilepath = req.files.coverImage[0].path;
+  }
   if (!avtarLocalfilepath) {
     return res.status(404).json({
       message: "invalid avtar",
@@ -65,7 +79,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
-  // check user is created or not
+  // check user is created or not and returning user Obj
   const userObj = await userModel
     .findById(user._id)
     .select("-password -refreshToken");
@@ -78,6 +92,76 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({
-    userObj
+    userObj,
+  });
+});
+
+//loggin cantroller
+const logginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  console.log(email);
+  //validating input
+  if (!email) {
+    res.status(406).json({
+      message: "invalid email",
+    });
+    return;
+  }
+
+  // finding user in DB
+  const checkUser = await userModel.findOne({ email });
+
+  if (!checkUser) {
+    res.status(404).json({
+      message: "user not found",
+    });
+    return;
+  }
+  // matching password to hashed PW
+  const isPWcorrect = await checkUser.isPasswordCorrect(password);
+
+  console.log(process.env.JWT_TOKEN);
+
+  if (!isPWcorrect) {
+    res.status(402).json({
+      message: "Incorrect Password",
+    });
+  }
+
+  const { AccessToken, refreshtoken } = await genrateRefreshAndAcsessToken(
+    checkUser._id
+  );
+
+  const loggedInUser = await userModel
+    .findById(checkUser._id)
+    .select("-password -refreshToken");
+
+  const option = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", AccessToken, option)
+    .cookie("RefreshToken", refreshtoken, option);
+});
+
+// logout controller
+
+const loggout = asyncHandler(async (req, res) => {
+  await userModel.findByIdAndUpdate(req.user._id, {
+    $set: {
+      refreshToken: undefined,
+    },
+  });
+  const option = {
+    httpOnly: true,
+    secure: true,
+  };
+  res.status(200).clearCookie("accessToken",option).clearCookie("RefreshToken",option).json({
+    message:"loggout Success !!"
   })
 });
+
+export { registerUser, logginUser, loggout };
