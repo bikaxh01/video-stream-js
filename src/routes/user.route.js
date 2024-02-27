@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,logginUser,loggout,refreshToken } from "../controllers/user.controller.js";
+import { registerUser,logginUser,loggout,refreshToken, updatePW,getUser } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 const router = Router();
@@ -17,6 +17,10 @@ router.route('/loggin').post(logginUser)
 router.route('/loggout').post(verifyJWT,loggout)
 
 router.route('/refresh-token').post(refreshToken)
+
+router.route('/update-password').put(verifyJWT,updatePW)
+
+router.route('/get-user').get(verifyJWT,getUser)
 
 
 export default router;

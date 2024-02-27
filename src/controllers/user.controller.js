@@ -172,7 +172,7 @@ const loggout = asyncHandler(async (req, res) => {
 
 // refresh token if expired
 const refreshToken = asyncHandler(async (req, res) => {
-  const inCommingToken = req.cookie.RefreshToken;
+  const inCommingToken = req.cookies.RefreshToken;
 
   if (!inCommingToken) {
     res.status(403).json({
@@ -210,8 +210,118 @@ const refreshToken = asyncHandler(async (req, res) => {
     .cookie("accessToken", AccessToken, option)
     .cookie("RefreshToken", refreshtoken, option)
     .json({
-      message: loggedInUser,
+      message: "Token Refreshed",
     });
 });
 
-export { registerUser, logginUser, loggout,refreshToken };
+// Update password
+const updatePW = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  console.log(req.user);
+  const user = await userModel.findById(req.user);
+
+  const isPWcorrect = await user.isPasswordCorrect(currentPassword);
+
+  if (!isPWcorrect) {
+    return res.status(402).json({
+      message: "Invalid Pasword",
+    });
+  }
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    message: "Password Changed...",
+  });
+});
+
+// Get User Detail
+
+const getUser = asyncHandler(async (req, res) => {
+  const userId = req.user;
+
+  res.json({
+    message: userId,
+  });
+});
+
+// Avtar update
+const updateAvtar = asyncHandler(async (req, res) => {
+  const avtarLocalPath = req.files.path;
+
+  if (!avtarLocalPath) {
+    return res.status(400).json({
+      message: "Avatar not found",
+    });
+  }
+  const avtar = await cloudinaryUpload(avtarLocalPath);
+
+  if (!avtar.url) {
+    return res.status(404).json({
+      message: "Internal Server Error",
+    });
+  }
+
+  const userId = req.user._id;
+
+  const user=await userModel.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        avatar: avtar.url,
+      },
+    },
+    { new: true }
+  ).select('-password')
+
+  res.status(200).json({
+    message:user
+  })
+});
+
+
+// cover img update
+const updateCoverImg = asyncHandler(async (req, res) => {
+  const CoverImgLocalPath = req.files.path;
+
+  if (!CoverImgLocalPath) {
+    return res.status(400).json({
+      message: "Image not found",
+    });
+  }
+  const img= await cloudinaryUpload(avtarLocalPath);
+
+  if (!img.url) {
+    return res.status(404).json({
+      message: "Internal Server Error",
+    });
+  }
+
+  const userId = req.user._id;
+
+  const user=await userModel.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        coverImage:img.url,
+      },
+    },
+    { new: true }
+  ).select('-password')
+
+  res.status(200).json({
+    message:user
+  })
+});
+
+export {
+  registerUser,
+  logginUser,
+  loggout,
+  refreshToken,
+  updatePW,
+  getUser,
+  updateAvtar,
+  updateCoverImg
+};
