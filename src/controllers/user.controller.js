@@ -290,7 +290,7 @@ const updateCoverImg = asyncHandler(async (req, res) => {
       message: "Image not found",
     });
   }
-  const img= await cloudinaryUpload(avtarLocalPath);
+  const img= await cloudinaryUpload(CoverImgLocalPath);
 
   if (!img.url) {
     return res.status(404).json({
